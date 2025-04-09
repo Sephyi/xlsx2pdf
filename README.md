@@ -21,9 +21,10 @@ A fast, lightweight utility to convert Excel (.xlsx) files to PDF format with ju
 
 ### Download Pre-built Binary
 
-1. Download the latest release for your platform from the [Releases page](https://github.com/yourusername/xlsx2pdf/releases)
+1. Download the latest release for your platform from the [Releases page](https://github.com/Sephyi/xlsx2pdf/releases)
 2. Extract the executable to any convenient location
 3. On macOS/Linux, make the file executable:
+
    ```bash
    chmod +x xlsx2pdf-mac    # or xlsx2pdf-linux
    ```
@@ -34,7 +35,7 @@ If you prefer to build the application yourself:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/xlsx2pdf.git
+git clone https://github.com/Sephyi/xlsx2pdf.git
 cd xlsx2pdf
 
 # Install dependencies
