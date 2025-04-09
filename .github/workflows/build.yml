@@ -1,0 +1,100 @@
+name: Build XLSX2PDF
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            output_name: xlsx2pdf-linux
+          - os: windows-latest
+            output_name: xlsx2pdf.exe
+          - os: macos-latest
+            output_name: xlsx2pdf-mac
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest
+
+    - name: Install dependencies
+      run: bun install
+
+    - name: Build binary
+      run: bun run scripts/build.ts
+
+    - name: Set executable permissions (not Windows)
+      if: matrix.os != 'windows-latest'
+      run: chmod +x ./build/${{ matrix.output_name }}
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: xlsx2pdf-${{ matrix.os }}
+        path: ./build/${{ matrix.output_name }}
+
+  create-release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    # Only run on tags or manual trigger
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: ./artifacts
+
+    - name: Prepare release assets
+      run: |
+        mkdir -p release
+        cp ./artifacts/xlsx2pdf-ubuntu-latest/xlsx2pdf-linux ./release/
+        cp ./artifacts/xlsx2pdf-windows-latest/xlsx2pdf.exe ./release/
+        cp ./artifacts/xlsx2pdf-macos-latest/xlsx2pdf-mac ./release/
+        cp README.md ./release/
+        cd release
+        zip -r xlsx2pdf-windows.zip xlsx2pdf.exe README.md
+        tar -czf xlsx2pdf-linux.tar.gz xlsx2pdf-linux README.md
+        tar -czf xlsx2pdf-mac.tar.gz xlsx2pdf-mac README.md
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ./release/xlsx2pdf-windows.zip
+          ./release/xlsx2pdf-linux.tar.gz
+          ./release/xlsx2pdf-mac.tar.gz
+        draft: false
+        prerelease: false
+
+    - name: Create Draft Release
+      if: github.event_name == 'workflow_dispatch'
+      id: create_draft_release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ./release/xlsx2pdf-windows.zip
+          ./release/xlsx2pdf-linux.tar.gz
+          ./release/xlsx2pdf-mac.tar.gz
+        draft: true
+        prerelease: false
+        name: Development Build
+        tag_name: dev-${{ github.run_number }}
